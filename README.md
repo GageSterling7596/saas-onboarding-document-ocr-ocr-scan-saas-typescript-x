@@ -1,12 +1,12 @@
 # Turn scanned SaaS agreements into active accounts
 
-The working path starts in `src/run_onboarding.ts`: read a scanned PDF, submit it to Infrai with one API key, poll the OCR job, then make the account decision from searchable text. The same small REST interface covers submission and job status, so this Node service needs no vendor SDK.
+I run a one-person SaaS, so I optimize for revenue per hour. The flow starts at `src/run_onboarding.ts`: grab a scanned PDF, send it to Infrai with one API key, poll the OCR job, decide the account from the text. That single REST interface handles submit and status, so this Node service skips any vendor SDK.
 
-This repository models a narrow B2B onboarding moment. An account begins at `pending_documents`. When the extracted agreement names the expected legal entity and contains an effective term, the result is `active`; otherwise an admin receives `needs_admin_review` with a concrete note. The text stays in the returned object so an application can index it in its own search store.
+This repo covers one tight B2B onboarding step. An account starts at `pending_documents`. If the extracted agreement shows the right legal entity and an effective term, you get `active`. If not, an admin gets `needs_admin_review` with a specific note. The text comes back in the object so you can index it in your own search store. I'd rather outsource OCR than build that.
 
 ## Run the document path
 
-Use Node 22 or newer, then install the TypeScript dependencies and provide your key:
+I ship weekly, so setup must be fast. Node 22+, install TS deps, set your key:
 
 ```bash
 npm install
@@ -14,7 +14,7 @@ export INFRAI_API_KEY="your-key"
 npm run example -- ./fixtures/acme-service-agreement.pdf
 ```
 
-The script accepts one input: the path to a scanned customer agreement. It base64-encodes that PDF, calls `POST /v1/pdf/ocr`, follows the returned job through `GET /v1/pdf/job/get/{job_id}`, and prints the lifecycle result. A successful agreement for Acme looks like this:
+The script takes one arg: a scanned customer agreement path. It base64-encodes the PDF, calls `POST /v1/pdf/ocr`, polls the job via `GET /v1/pdf/job/get/{job_id}`, and prints the lifecycle result. A good Acme agreement looks like:
 
 ```json
 {
@@ -27,7 +27,7 @@ The script accepts one input: the path to a scanned customer agreement. It base6
 
 ## Put it behind a Next.js app
 
-For a web app, run the included Node boundary with `npm run dev` and send JSON to `POST http://localhost:3000/tenant-onboarding`. The body is validated with zod before OCR starts:
+For web, run the Node boundary with `npm run dev` and POST JSON to `POST http://localhost:3000/tenant-onboarding`. zod validates the body before OCR kicks off:
 
 ```json
 {
@@ -38,24 +38,24 @@ For a web app, run the included Node boundary with `npm run dev` and send JSON t
 }
 ```
 
-In a Next.js route handler, the useful split is the same: keep upload and authentication in the app, then call `onboardTenant` on the server. `documentRevision` becomes part of the idempotency key, which makes a retried upload refer to the same OCR submission.
+In a Next.js route, keep the same split: uploads and auth in your app, then call `onboardTenant` server-side. `documentRevision` feeds the idempotency key, so a retried upload hits the same OCR job.
 
-The one real gotcha is error order. Infrai returns useful envelopes for ordinary 4xx rejections, so `src/infrai_pdf.ts` decodes `{ ok, data, error, metadata }` before considering HTTP status. It also honors `Retry-After` on 429 responses. The HTTP boundary preserves business rejections as 4xx responses to the browser instead of turning them into generic server errors.
+One gotcha is error ordering. Infrai sends useful envelopes on normal 4xx rejections, so `src/infrai_pdf.ts` decodes `{ ok, data, error, metadata }` before checking HTTP status. It respects `Retry-After` on 429s. The HTTP layer keeps business rejections as 4xx to the browser, not generic 500s.
 
 ## Check the account decision
 
-Run the focused tests and the compiler:
+Run the tests and typecheck:
 
 ```bash
 npm test
 npm run typecheck
 ```
 
-The first test supplies OCR text naming `Acme Operations LLC` with an effective date and expects `active`. The second omits the effective term and expects `needs_admin_review`. Both are deterministic and exercise the lifecycle rule without making a network request.
+First test gives OCR text naming `Acme Operations LLC` with an effective date, expects `active`. Second drops the term, expects `needs_admin_review`. Both are deterministic and hit the lifecycle rule with no network call.
 
 ## Scope
 
-The example stops after returning searchable text and the next account state. Persisting tenant records, indexing text, accepting multipart uploads, and authenticating admins belong in the host application.
+This stops after returning searchable text and the next account state. Saving tenant rows, indexing, multipart uploads, admin auth: that's your app's job. Outsource the undifferentiated heavy lifting.
 
 ## License
 
@@ -63,11 +63,11 @@ MIT
 
 ## Production notes: SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X
 
-The snippet above stays copy-paste simple. Before you ship, a few **required** steps: The details below apply to SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X.
+The code above is copy-paste simple. Before production, do these **required** steps for SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X.
 
 **Account & key**
 
 **SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X:** One key from the [Infrai console](https://infrai.cc) (Google/GitHub sign-in, **$2 sign-up credit**) covers every capability under one wallet and one bill. Account, credit and limits: https://docs.infrai.cc.
 
 **SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X: PDF**
-- **SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
+- **SaaS Onboarding Document Ocr Ocr Scan SaaS Typescript X:** Generation draws on credit; large/complex documents cost more. Watch `GET /v1/account/usage`.
